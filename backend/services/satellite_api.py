@@ -174,11 +174,13 @@ class SatelliteAPI:
 
                     bounds = src.bounds
                     crs = src.crs
+                    transform = src.transform
 
             return {
                 "image": image,
                 "bounds": bounds,
                 "crs": crs,
+                "transform": transform,
                 "source": "Microsoft Planetary Computer",
                 "item_id": item_id,
                 "lat": lat,
@@ -220,17 +222,27 @@ class SatelliteAPI:
 
         # Calculate approximate bounds
         buffer = 0.05
-        bounds = {
+        bounds_dict = {
             "left": lon - buffer,
             "right": lon + buffer,
             "top": lat + buffer,
             "bottom": lat - buffer,
         }
 
+        # Create bounds object
+        bounds = type("Bounds", (), bounds_dict)()
+
+        # Create transform
+        from rasterio.transform import from_bounds
+        transform = from_bounds(
+            bounds.left, bounds.bottom, bounds.right, bounds.top, 256, 256
+        )
+
         return {
             "image": image,
-            "bounds": type("Bounds", (), bounds)(),
+            "bounds": bounds,
             "crs": "EPSG:4326",
+            "transform": transform,
             "source": "Simulated (STAC unavailable)",
             "item_id": f"sim_{lat:.2f}_{lon:.2f}",
             "lat": lat,

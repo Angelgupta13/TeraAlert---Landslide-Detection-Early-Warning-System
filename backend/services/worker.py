@@ -217,12 +217,13 @@ class BackgroundMonitor:
 
         bounds = DemoBounds(left, right, top, bottom)
         transform = from_bounds(left, bottom, right, top, 256, 256)
+        crs = "EPSG:4326"
 
         return {
             "image": image,
             "bounds": bounds,
             "transform": transform,
-            "crs": "EPSG:4326",
+            "crs": crs,
             "source": "demo",
             "item_id": f"demo_{lat:.2f}_{lon:.2f}",
             "lat": lat,
