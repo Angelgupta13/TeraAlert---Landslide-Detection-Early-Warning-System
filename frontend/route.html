@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeraAlert | Route Planner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0a0a0f;
+            --bg-2: #0d0d15;
+            --surface: #12121a;
+            --surface-2: #1a1a25;
+            --text: #e0e0e0;
+            --text-dim: #707080;
+            --cyan: #00f0ff;
+            --cyan-dim: rgba(0, 240, 255, 0.15);
+            --cyan-glow: rgba(0, 240, 255, 0.4);
+            --red: #ff3366;
+            --red-dim: rgba(255, 51, 102, 0.15);
+            --green: #00ff88;
+            --orange: #ff6600;
+        }
+        
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            font-size: 14px;
+        }
+        
+        h1, h2, h3, h4, .logo, .btn, .route-title, .route-stat .value {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 1.5rem;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+        }
+        
+        .logo {
+            font-weight: 700;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text);
+        }
+        
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--cyan), #0080ff);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px var(--cyan-glow);
+        }
+        
+        .logo-icon svg { width: 20px; height: 20px; }
+        
+        .logo span {
+            background: linear-gradient(135deg, var(--cyan), var(--green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+            padding-top: 60px;
+            padding-bottom: 50px;
+        }
+        
+        .sidebar {
+            width: 380px;
+            min-width: 380px;
+            background: var(--surface);
+            border-right: 1px solid rgba(0, 240, 255, 0.1);
+            padding: 1.25rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .card {
+            background: var(--surface-2);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+        
+        .card-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .card-title .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .card-title .dot.green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .card-title .dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+        
+        .input-wrapper {
+            position: relative;
+            margin-bottom: 0.5rem;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.25rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px var(--cyan-dim);
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+        }
+        
+        .input-btn {
+            position: absolute;
+            right: 0.4rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--cyan);
+            border: none;
+            color: #000;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+        
+        .input-btn:hover {
+            background: #00d4e6;
+        }
+        
+        .quick-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+        
+        .quick-btn {
+            padding: 0.35rem 0.6rem;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .quick-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: var(--cyan-dim);
+        }
+        
+        .btn-main {
+            width: 100%;
+            padding: 0.875rem;
+            background: linear-gradient(135deg, var(--cyan), #0080ff);
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 20px var(--cyan-glow);
+            transition: all 0.2s;
+        }
+        
+        .btn-main:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 30px var(--cyan-glow);
+        }
+        
+        .btn-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-secondary {
+            flex: 1;
+            padding: 0.6rem;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: var(--cyan-dim);
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .route-panel {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            right: 15px;
+            background: var(--surface);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        .route-panel.active { display: block; }
+        
+        .route-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .route-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text);
+        }
+        
+        .route-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .route-stat {
+            background: var(--surface-2);
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .route-stat .value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+        
+        .route-stat .label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            margin-top: 0.15rem;
+        }
+        
+        .map-controls {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            z-index: 1000;
+        }
+        
+        .map-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--surface);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .map-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: var(--cyan-dim);
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--surface);
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .loading.active { display: flex; }
+        
+        .toast {
+            position: fixed;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%) translateY(50px);
+            background: var(--surface-2);
+            color: var(--text);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            font-size: 0.85rem;
+            z-index: 2000;
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .legend {
+            background: var(--surface-2);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: auto;
+        }
+        
+        .legend-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+            margin-bottom: 0.75rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.3rem 0;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+        
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        .legend-dot.green { background: var(--green); }
+        .legend-dot.red { background: var(--red); }
+        .legend-dot.cyan { background: var(--cyan); }
+        .legend-dot.orange { background: var(--orange); }
+        
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 0.75rem 1.5rem;
+            background: var(--surface);
+            border-top: 1px solid rgba(0, 240, 255, 0.1);
+            text-align: center;
+            z-index: 100;
+        }
+        
+        footer span {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+        
+        footer a {
+            color: var(--cyan);
+            text-decoration: none;
+        }
+        
+        footer a:hover { text-decoration: underline; }
+        
+        @media (max-width: 900px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; min-width: unset; height: 50vh; }
+            .map-container { height: 50vh; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <span class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 20L12 4L21 20H3Z"/>
+                    <path d="M8 16H16"/>
+                </svg>
+            </span>
+            Tera<span>Alert</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="card">
+                <div class="card-title">
+                    <span class="dot green"></span>
+                    Origin
+                </div>
+                <div class="input-wrapper">
+                    <i class="fas fa-location-dot input-icon" style="color: var(--green);"></i>
+                    <input type="text" class="input-field" id="origin" placeholder="Enter origin address...">
+                    <button class="input-btn" onclick="searchLocation('origin')">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="quick-btns">
+                    <button class="quick-btn" onclick="quickSet('origin', 'Hamirpur, HP')">Hamirpur</button>
+                    <button class="quick-btn" onclick="quickSet('origin', 'Kangra, HP')">Kangra</button>
+                    <button class="quick-btn" onclick="quickSet('origin', 'Dehradun, UK')">Dehradun</button>
+                    <button class="quick-btn" onclick="useMyLocation('origin')">
+                        <i class="fas fa-location-crosshairs"></i> My Location
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">
+                    <span class="dot red"></span>
+                    Destination
+                </div>
+                <div class="input-wrapper">
+                    <i class="fas fa-flag-checkered input-icon" style="color: var(--red);"></i>
+                    <input type="text" class="input-field" id="destination" placeholder="Enter destination address...">
+                    <button class="input-btn" onclick="searchLocation('destination')">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="quick-btns">
+                    <button class="quick-btn" onclick="quickSet('destination', 'Mandi, HP')">Mandi</button>
+                    <button class="quick-btn" onclick="quickSet('destination', 'Kullu, HP')">Kullu</button>
+                    <button class="quick-btn" onclick="quickSet('destination', 'Leh, Ladakh')">Leh</button>
+                    <button class="quick-btn" onclick="useMyLocation('destination')">
+                        <i class="fas fa-location-crosshairs"></i> My Location
+                    </button>
+                </div>
+            </div>
+            
+            <button class="btn-main" onclick="calculateRoute()">
+                <i class="fas fa-route"></i>
+                Find Safe Route
+            </button>
+            
+            <div class="btn-row">
+                <button class="btn-secondary" onclick="openInOSM()">
+                    <i class="fas fa-map"></i> OSM
+                </button>
+                <button class="btn-secondary" onclick="openInGoogleMaps()">
+                    <i class="fab fa-google"></i> Google
+                </button>
+                <button class="btn-secondary" onclick="clearRoute()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-title">Map Legend</div>
+                <div class="legend-item"><span class="legend-dot green"></span> Starting Point</div>
+                <div class="legend-item"><span class="legend-dot red"></span> Destination</div>
+                <div class="legend-item"><span class="legend-dot cyan"></span> Suggested Route</div>
+                <div class="legend-item"><span class="legend-dot orange"></span> Landslide Risk Areas</div>
+            </div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <div class="loading" id="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Calculating route...</span>
+            </div>
+            
+            <div class="map-controls">
+                <button class="map-btn" onclick="setClickMode('origin')" title="Set Origin">
+                    <i class="fas fa-circle" style="color: var(--green);"></i>
+                </button>
+                <button class="map-btn" onclick="setClickMode('destination')" title="Set Destination">
+                    <i class="fas fa-flag" style="color: var(--red);"></i>
+                </button>
+                <button class="map-btn" onclick="map.setView([31.5, 77.5], 7)" title="Reset">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
+            
+            <div class="route-panel" id="routePanel">
+                <div class="route-header">
+                    <span class="route-title">
+                        <i class="fas fa-check-circle" style="color: var(--green);"></i>
+                        Route Found
+                    </span>
+                </div>
+                <div class="route-stats">
+                    <div class="route-stat">
+                        <div class="value" id="routeDistance">--</div>
+                        <div class="label">Distance</div>
+                    </div>
+                    <div class="route-stat">
+                        <div class="value" id="routeDuration">--</div>
+                        <div class="label">Duration</div>
+                    </div>
+                    <div class="route-stat">
+                        <div class="value" id="dangerCount" style="color: var(--red);">0</div>
+                        <div class="label">Risk Areas</div>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn-secondary" onclick="openInGoogleMaps()">
+                        <i class="fab fa-google"></i> Google Maps
+                    </button>
+                    <button class="btn-secondary" onclick="openInOSM()">
+                        <i class="fas fa-map"></i> OpenStreetMap
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+
+    <footer>
+        <span>TeraAlert | Developed by <a href="#">Angel Gupta</a></span>
+    </footer>
+
+    <script>
+        const map = L.map('map').setView([31.5, 77.5], 7);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let routingControl = null;
+        let originMarker = null;
+        let destMarker = null;
+        let dangerMarkers = [];
+        let dangerZones = [];
+        let clickMode = null;
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function setClickMode(mode) {
+            if (clickMode === mode) {
+                clickMode = null;
+                map.getContainer().style.cursor = '';
+                showToast('Click mode cancelled');
+            } else {
+                clickMode = mode;
+                map.getContainer().style.cursor = 'crosshair';
+                showToast('Click on map to set ' + (mode === 'origin' ? 'origin' : 'destination'));
+            }
+        }
+
+        map.on('click', function(e) {
+            if (!clickMode) return;
+            
+            const lat = e.latlng.lat.toFixed(4);
+            const lon = e.latlng.lng.toFixed(4);
+            
+            if (clickMode === 'origin') {
+                document.getElementById('origin').value = `${lat}, ${lon}`;
+                if (originMarker) map.removeLayer(originMarker);
+                originMarker = L.circleMarker([lat, lon], {
+                    radius: 10, fillColor: '#00ff88', color: '#fff', fillOpacity: 1, weight: 2
+                }).addTo(map).bindPopup('Origin');
+            } else {
+                document.getElementById('destination').value = `${lat}, ${lon}`;
+                if (destMarker) map.removeLayer(destMarker);
+                destMarker = L.circleMarker([lat, lon], {
+                    radius: 10, fillColor: '#ff3366', color: '#fff', fillOpacity: 1, weight: 2
+                }).addTo(map).bindPopup('Destination');
+            }
+            
+            clickMode = null;
+            map.getContainer().style.cursor = '';
+        });
+
+        function quickSet(type, place) {
+            document.getElementById(type).value = place;
+            searchLocation(type);
+        }
+
+        function useMyLocation(type) {
+            if (!navigator.geolocation) {
+                showToast('Geolocation not supported');
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude.toFixed(4);
+                    const lon = pos.coords.longitude.toFixed(4);
+                    document.getElementById(type).value = `${lat}, ${lon}`;
+                    showToast('Location set to your current position');
+                    
+                    if (type === 'origin') {
+                        if (originMarker) map.removeLayer(originMarker);
+                        originMarker = L.circleMarker([lat, lon], {
+                            radius: 10, fillColor: '#00ff88', color: '#fff', fillOpacity: 1, weight: 2
+                        }).addTo(map).bindPopup('Your Location');
+                    } else {
+                        if (destMarker) map.removeLayer(destMarker);
+                        destMarker = L.circleMarker([lat, lon], {
+                            radius: 10, fillColor: '#ff3366', color: '#fff', fillOpacity: 1, weight: 2
+                        }).addTo(map).bindPopup('Your Destination');
+                    }
+                    map.setView([lat, lon], 12);
+                },
+                () => showToast('Could not get location')
+            );
+        }
+
+        async function searchLocation(type) {
+            const input = document.getElementById(type);
+            const value = input.value.trim();
+            
+            if (!value) {
+                showToast('Please enter a location');
+                return;
+            }
+            
+            const coords = parseCoords(value);
+            if (coords) {
+                input.value = `${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}`;
+                showToast('Coordinates set');
+                return;
+            }
+            
+            const searchVariations = [value, value + ', India', value + ', Delhi, India'];
+            
+            let found = null;
+            
+            for (const searchVal of searchVariations) {
+                try {
+                    const res = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchVal)}&limit=1&accept-language=en&countrycodes=in`
+                    );
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        found = data[0];
+                        break;
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+            
+            if (found) {
+                const lat = parseFloat(found.lat).toFixed(4);
+                const lon = parseFloat(found.lon).toFixed(4);
+                input.value = `${lat}, ${lon}`;
+                const name = found.display_name.split(',').slice(0, 2).join(',');
+                showToast('Found: ' + name);
+            } else {
+                showToast('Location not found');
+            }
+        }
+
+        function parseCoords(input) {
+            input = input.trim();
+            if (input.includes(',')) {
+                const parts = input.split(',').map(p => parseFloat(p.trim()));
+                if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    if (Math.abs(parts[0]) <= 90 && Math.abs(parts[1]) <= 180) {
+                        return [parts[0], parts[1]];
+                    }
+                }
+            }
+            const match = input.match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
+            if (match) {
+                const lat = parseFloat(match[1]);
+                const lon = parseFloat(match[2]);
+                if (Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+                    return [lat, lon];
+                }
+            }
+            return null;
+        }
+
+        function calculateRoute() {
+            const originInput = document.getElementById('origin').value.trim();
+            const destInput = document.getElementById('destination').value.trim();
+
+            if (!originInput || !destInput) {
+                showToast('Enter both origin and destination');
+                return;
+            }
+
+            const origin = parseCoords(originInput);
+            const dest = parseCoords(destInput);
+
+            if (!origin || !dest) {
+                showToast('Could not parse locations');
+                return;
+            }
+
+            document.getElementById('loading').classList.add('active');
+            clearRouteMarkers();
+
+            routingControl = L.Routing.control({
+                waypoints: [L.latLng(origin[0], origin[1]), L.latLng(dest[0], dest[1])],
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1'
+                }),
+                lineOptions: {
+                    styles: [{color: '#00f0ff', opacity: 0.8, weight: 5}]
+                },
+                show: false,
+                addWaypoints: false,
+                fitSelectedRoutes: true,
+                showAlternatives: false
+            }).addTo(map);
+
+            routingControl.on('routesfound', function(e) {
+                document.getElementById('loading').classList.remove('active');
+                const route = e.routes[0];
+                document.getElementById('routeDistance').textContent = (route.summary.totalDistance / 1000).toFixed(1) + ' km';
+                document.getElementById('routeDuration').textContent = Math.round(route.summary.totalTime / 60) + ' min';
+                document.getElementById('routePanel').classList.add('active');
+
+                originMarker = L.circleMarker(origin, {
+                    radius: 10, fillColor: '#00ff88', color: '#fff', fillOpacity: 1, weight: 2
+                }).addTo(map).bindPopup('Origin');
+                destMarker = L.circleMarker(dest, {
+                    radius: 10, fillColor: '#ff3366', color: '#fff', fillOpacity: 1, weight: 2
+                }).addTo(map).bindPopup('Destination');
+                
+                checkDangerZonesOnRoute(origin, dest);
+                
+                showToast('Route calculated successfully');
+            });
+
+            routingControl.on('routingerror', function() {
+                document.getElementById('loading').classList.remove('active');
+                showToast('Could not find route');
+            });
+        }
+
+        function checkDangerZonesOnRoute(origin, dest) {
+            const threshold = 0.05;
+            
+            let nearbyCount = 0;
+            
+            dangerZones.forEach(zone => {
+                const distance = pointToLineDistance(
+                    [zone.latitude, zone.longitude],
+                    origin,
+                    dest
+                );
+                if (distance < threshold) {
+                    nearbyCount++;
+                }
+            });
+            
+            document.getElementById('dangerCount').textContent = nearbyCount;
+            
+            if (nearbyCount > 0) {
+                showToast(`Warning: Route passes near ${nearbyCount} landslide risk area(s)`);
+            }
+        }
+
+        function pointToLineDistance(point, lineStart, lineEnd) {
+            const A = point[0] - lineStart[0];
+            const B = point[1] - lineStart[1];
+            const C = lineEnd[0] - lineStart[0];
+            const D = lineEnd[1] - lineStart[1];
+
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            
+            if (lenSq !== 0) param = dot / lenSq;
+
+            let xx, yy;
+            
+            if (param < 0) {
+                xx = lineStart[0];
+                yy = lineStart[1];
+            } else if (param > 1) {
+                xx = lineEnd[0];
+                yy = lineEnd[1];
+            } else {
+                xx = lineStart[0] + param * C;
+                yy = lineStart[1] + param * D;
+            }
+
+            const dx = point[0] - xx;
+            const dy = point[1] - yy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function clearRouteMarkers() {
+            if (routingControl) { map.removeControl(routingControl); routingControl = null; }
+            if (originMarker) { map.removeLayer(originMarker); originMarker = null; }
+            if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+        }
+
+        function clearRoute() {
+            clearRouteMarkers();
+            document.getElementById('routePanel').classList.remove('active');
+            document.getElementById('origin').value = '';
+            document.getElementById('destination').value = '';
+            clickMode = null;
+            map.getContainer().style.cursor = '';
+            map.setView([31.5, 77.5], 7);
+        }
+
+        function openInOSM() {
+            const origin = parseCoords(document.getElementById('origin').value);
+            const dest = parseCoords(document.getElementById('destination').value);
+            if (origin && dest) {
+                window.open(`https://www.openstreetmap.org/directions?from=${origin[0]},${origin[1]}&to=${dest[0]},${dest[1]}`, '_blank');
+            } else {
+                showToast('Enter locations first');
+            }
+        }
+
+        function openInGoogleMaps() {
+            const origin = parseCoords(document.getElementById('origin').value);
+            const dest = parseCoords(document.getElementById('destination').value);
+            if (origin && dest) {
+                window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin[0]},${origin[1]}&destination=${dest[0]},${dest[1]}&travelmode=driving`, '_blank');
+            } else {
+                showToast('Enter locations first');
+            }
+        }
+
+        // Load danger zones from API
+        fetch('/api/landslides/active')
+            .then(r => r.json())
+            .then(data => {
+                dangerZones = data.danger_zones || [];
+                const colors = { 'Very High': '#ff3366', 'High': '#ff6600', 'Medium': '#ffaa00', 'Low': '#00ff88' };
+                
+                dangerZones.forEach(zone => {
+                    const color = colors[zone.severity] || '#ff6600';
+                    const marker = L.circleMarker([zone.latitude, zone.longitude], {
+                        radius: 8,
+                        fillColor: color,
+                        color: '#fff',
+                        fillOpacity: 0.7,
+                        weight: 2
+                    }).addTo(map).bindPopup(`⚠️ ${zone.severity}: ${(zone.area_sq_meters || 0).toFixed(0)} m²`);
+                    dangerMarkers.push(marker);
+                });
+            });
+
+        // Enter key to search
+        document.getElementById('origin').addEventListener('keypress', e => {
+            if (e.key === 'Enter') searchLocation('origin');
+        });
+        document.getElementById('destination').addEventListener('keypress', e => {
+            if (e.key === 'Enter') searchLocation('destination');
+        });
+    </script>
+</body>
+</html>

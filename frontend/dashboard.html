@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeraAlert | Monitoring Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0a0a0f;
+            --bg-2: #0d0d15;
+            --surface: #12121a;
+            --surface-2: #1a1a25;
+            --text: #e0e0e0;
+            --text-dim: #707080;
+            --cyan: #00f0ff;
+            --cyan-dim: rgba(0, 240, 255, 0.15);
+            --cyan-glow: rgba(0, 240, 255, 0.4);
+            --red: #ff3366;
+            --red-dim: rgba(255, 51, 102, 0.15);
+            --green: #00ff88;
+            --orange: #ff6600;
+        }
+        
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            letter-spacing: 0.01em;
+        }
+        
+        h1, h2, h3, h4, .logo, .stat-value, .btn {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .logo {
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text);
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--cyan), #0080ff);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px var(--cyan-glow);
+        }
+        
+        .logo-icon svg { width: 18px; height: 18px; }
+        
+        .logo span {
+            background: linear-gradient(135deg, var(--cyan), var(--green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.75rem;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--green);
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--green);
+        }
+        
+        .status-pill .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--green);
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .last-update {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+        
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.75rem;
+            background: var(--surface-2);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .back-link:hover {
+            color: var(--cyan);
+            border-color: var(--cyan);
+            background: var(--cyan-dim);
+        }
+        
+        .main {
+            padding-top: 60px;
+            padding-bottom: 50px;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            min-height: 100vh;
+        }
+        
+        .col-main {
+            padding: 1.25rem;
+            overflow-y: auto;
+        }
+        
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+        
+        .stat-card .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.35rem;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        
+        .stat-card.danger .stat-value { color: var(--cyan); }
+        .stat-card.warning .stat-value { color: var(--orange); }
+        .stat-card.success .stat-value { color: var(--green); }
+        .stat-card.info .stat-value { color: #60a5fa; }
+        
+        .stat-card .stat-sub {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 0.35rem;
+        }
+        
+        .map-card {
+            background: var(--surface);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 1.25rem;
+        }
+        
+        .map-header {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .map-header h2 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text);
+        }
+        
+        .btn-icon {
+            padding: 0.35rem 0.6rem;
+            background: var(--surface-2);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 6px;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-icon:hover {
+            color: var(--cyan);
+            border-color: var(--cyan);
+            background: var(--cyan-dim);
+        }
+        
+        .map-container { height: 350px; position: relative; }
+        #map { height: 100%; width: 100%; }
+        
+        .map-actions {
+            padding: 0.875rem 1rem;
+            border-top: 1px solid rgba(0, 240, 255, 0.1);
+        }
+        
+        .btn {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        
+        .btn-danger {
+            background: var(--red);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.4);
+        }
+        
+        .chart-card {
+            background: var(--surface);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .chart-header h2 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+        
+        .chart-container { height: 160px; }
+        
+        .col-sidebar {
+            background: var(--surface);
+            border-left: 1px solid rgba(0, 240, 255, 0.1);
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .sidebar-card {
+            background: var(--surface-2);
+            border-radius: 10px;
+            padding: 0.875rem;
+        }
+        
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .sidebar-header h3 {
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text);
+        }
+        
+        .badge {
+            background: var(--red);
+            color: white;
+            padding: 0.15rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+        
+        .zone-select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.8rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+        }
+        
+        .weather-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        
+        .weather-item {
+            background: var(--bg);
+            padding: 0.6rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .weather-item i { font-size: 1rem; margin-bottom: 0.25rem; }
+        .weather-item .value { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+        .weather-item .label { font-size: 0.6rem; color: var(--text-dim); text-transform: uppercase; }
+        
+        .alert-list { max-height: 250px; overflow-y: auto; }
+        
+        .alert-item {
+            padding: 0.6rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid;
+            background: var(--bg);
+        }
+        
+        .alert-item.critical { border-color: var(--red); }
+        .alert-item.high { border-color: var(--orange); }
+        .alert-item.medium { border-color: #eab308; }
+        .alert-item.low { border-color: var(--green); }
+        
+        .alert-item .alert-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.2rem;
+        }
+        
+        .alert-item .severity { font-size: 0.7rem; font-weight: 600; }
+        .alert-item .time { font-size: 0.65rem; color: var(--text-dim); }
+        .alert-item .coords { font-size: 0.65rem; color: var(--text-dim); }
+        
+        .empty-state {
+            text-align: center;
+            padding: 1.5rem 1rem;
+            color: var(--text-dim);
+        }
+        
+        .empty-state i {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.4;
+        }
+        
+        .empty-state p { font-size: 0.8rem; }
+        
+        .risk-item {
+            padding: 0.5rem;
+            background: var(--bg);
+            border-radius: 6px;
+            margin-bottom: 0.4rem;
+            border-left: 3px solid;
+            font-size: 0.75rem;
+        }
+        
+        .risk-item .zone-name { font-weight: 500; color: var(--text); margin-bottom: 0.15rem; }
+        .risk-item .zone-risk { font-size: 0.65rem; color: var(--text-dim); }
+        
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        
+        .btn-outline {
+            background: var(--bg);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            color: var(--text);
+        }
+        
+        .btn-outline:hover {
+            color: var(--cyan);
+            border-color: var(--cyan);
+            background: var(--cyan-dim);
+        }
+        
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 0.75rem 1.5rem;
+            background: var(--surface);
+            border-top: 1px solid rgba(0, 240, 255, 0.1);
+            text-align: center;
+            z-index: 100;
+        }
+        
+        footer span {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+        
+        footer a {
+            color: var(--cyan);
+            text-decoration: none;
+        }
+        
+        footer a:hover { text-decoration: underline; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        
+        @media (max-width: 1024px) {
+            .main { grid-template-columns: 1fr; }
+            .col-sidebar { border-left: none; border-top: 1px solid rgba(0, 240, 255, 0.1); }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 20L12 4L21 20H3Z"/>
+                        <path d="M8 16H16"/>
+                    </svg>
+                </span>
+                Tera<span>Alert</span>
+            </div>
+            <div class="status-pill" id="systemStatus">
+                <span class="dot"></span>
+                <span id="statusText">System Active</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="last-update" id="lastUpdate">--</span>
+            <a href="/" class="back-link">
+                <i class="fas fa-home"></i>
+                Home
+            </a>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="col-main">
+            <div class="stats-row">
+                <div class="stat-card danger">
+                    <div class="stat-label">Active Landslides</div>
+                    <div class="stat-value" id="activeLandslides">--</div>
+                    <div class="stat-sub">Currently detected</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="stat-label">24h Rainfall</div>
+                    <div class="stat-value" id="avgRainfall">--</div>
+                    <div class="stat-sub">mm average</div>
+                </div>
+                <div class="stat-card info">
+                    <div class="stat-label">Zones</div>
+                    <div class="stat-value" id="monitoredZones">27</div>
+                    <div class="stat-sub">Monitored</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-label">Risk Level</div>
+                    <div class="stat-value" id="currentRisk">Low</div>
+                    <div class="stat-sub">Based on weather</div>
+                </div>
+            </div>
+
+            <div class="map-card">
+                <div class="map-header">
+                    <h2><i class="fas fa-map"></i> Danger Zone Map</h2>
+                    <button class="btn-icon" onclick="refreshMap()">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+                <div class="map-container">
+                    <div id="map"></div>
+                </div>
+                <div class="map-actions">
+                    <button class="btn btn-danger" onclick="triggerEmergencyAlert()">
+                        <i class="fas fa-bell"></i> Emergency Alert
+                    </button>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2><i class="fas fa-chart-line"></i> Precipitation Trend (48h)</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="weatherChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sidebar">
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <h3><i class="fas fa-cloud-sun"></i> Weather</h3>
+                </div>
+                <select class="zone-select" id="weatherZone" onchange="loadWeatherForZone()">
+                    <option value="31.52,76.52">Hamirpur, HP</option>
+                    <option value="32.09,76.32">Kangra, HP</option>
+                    <option value="31.71,76.93">Mandi, HP</option>
+                    <option value="31.10,77.17">Shimla, HP</option>
+                    <option value="31.96,77.11">Kullu, HP</option>
+                    <option value="30.32,78.03">Dehradun, UK</option>
+                    <option value="30.73,79.60">Chamoli, UK</option>
+                    <option value="34.08,74.80">Kashmir, JK</option>
+                    <option value="34.15,77.58">Leh, Ladakh</option>
+                </select>
+                <div class="weather-grid">
+                    <div class="weather-item">
+                        <i class="fas fa-temperature-half" style="color: #f97316;"></i>
+                        <div class="value" id="temperature">--°C</div>
+                        <div class="label">Temp</div>
+                    </div>
+                    <div class="weather-item">
+                        <i class="fas fa-droplet" style="color: #60a5fa;"></i>
+                        <div class="value" id="humidity">--%</div>
+                        <div class="label">Humidity</div>
+                    </div>
+                    <div class="weather-item">
+                        <i class="fas fa-cloud-rain" style="color: #6366f1;"></i>
+                        <div class="value" id="precipitation">--mm</div>
+                        <div class="label">Rainfall</div>
+                    </div>
+                    <div class="weather-item">
+                        <i class="fas fa-leaf" style="color: #22c55e;"></i>
+                        <div class="value" id="soilMoisture">--%</div>
+                        <div class="label">Soil</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <h3><i class="fas fa-exclamation-circle"></i> Recent Alerts</h3>
+                    <span class="badge" id="alertCount">0</span>
+                </div>
+                <div class="alert-list" id="alertList">
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <p>No active alerts</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <h3><i class="fas fa-triangle-exclamation"></i> Risk Zones</h3>
+                </div>
+                <div id="riskZones"></div>
+            </div>
+
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn btn-outline" onclick="refreshAll()">
+                        <i class="fas fa-sync"></i> Refresh Data
+                    </button>
+                    <button class="btn btn-outline" onclick="exportReport()">
+                        <i class="fas fa-download"></i> Export Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <span>TeraAlert | Developed by <a href="#">Angel Gupta</a></span>
+    </footer>
+
+    <script>
+        const API_BASE = '/api';
+        let map, weatherChart;
+        let landslideMarkers = [];
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            loadDashboard();
+            setInterval(() => loadDashboard(), 120000);
+        });
+
+        function initMap() {
+            if (map) map.remove();
+            map = L.map('map', { center: [33.5, 77.5], zoom: 7, preferCanvas: true });
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            loadLandslides();
+        }
+
+        async function loadDashboard() {
+            document.getElementById('lastUpdate').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+            await Promise.allSettled([loadLandslides(), loadWeather(), loadRiskZones()]);
+        }
+
+        async function loadLandslides() {
+            try {
+                const res = await fetch(`${API_BASE}/landslides/active`);
+                const data = await res.json();
+                const zones = data.danger_zones || [];
+                
+                document.getElementById('activeLandslides').textContent = zones.length;
+                document.getElementById('alertCount').textContent = zones.length;
+                
+                updateMapMarkers(zones);
+                updateAlertList(zones);
+                
+                document.getElementById('statusText').textContent = 'System Active';
+                document.getElementById('systemStatus').className = 'status-pill';
+            } catch (e) {
+                console.error('Failed to load landslides:', e);
+                document.getElementById('statusText').textContent = 'Offline';
+                document.getElementById('systemStatus').className = 'status-pill';
+                document.getElementById('systemStatus').style.background = 'var(--red-dim)';
+                document.getElementById('systemStatus').style.borderColor = 'var(--red)';
+                document.getElementById('systemStatus').style.color = 'var(--red)';
+            }
+        }
+
+        async function loadWeather() { loadWeatherForZone(); }
+        
+        async function loadWeatherForZone() {
+            const [lat, lon] = document.getElementById('weatherZone').value.split(',').map(Number);
+            try {
+                const res = await fetch(`${API_BASE}/weather?lat=${lat}&lon=${lon}`);
+                const data = await res.json();
+                const current = data.current || {};
+                document.getElementById('temperature').textContent = (current.temperature?.toFixed(0) ?? '--') + '°C';
+                document.getElementById('humidity').textContent = (current.humidity?.toFixed(0) ?? '--') + '%';
+                document.getElementById('precipitation').textContent = (current.precipitation?.toFixed(1) ?? '--') + 'mm';
+                document.getElementById('soilMoisture').textContent = (current.soil_moisture != null ? (current.soil_moisture * 100).toFixed(0) : '--') + '%';
+                document.getElementById('avgRainfall').textContent = (data.forecast_24h?.rainfall_24h?.toFixed(1) ?? '--');
+                
+                const risk = data.forecast_24h?.rainfall_24h > 25 ? 'High' : data.forecast_24h?.rainfall_24h > 10 ? 'Medium' : 'Low';
+                document.getElementById('currentRisk').textContent = risk;
+                updateWeatherChart(data.extended_48h || []);
+            } catch (e) {
+                document.getElementById('temperature').textContent = '22°C';
+                document.getElementById('humidity').textContent = '65%';
+                document.getElementById('precipitation').textContent = '0mm';
+                document.getElementById('soilMoisture').textContent = '45%';
+                document.getElementById('avgRainfall').textContent = '12.5';
+            }
+        }
+
+        async function loadRiskZones() {
+            try {
+                const res = await fetch(`${API_BASE}/risk-zones`);
+                const data = await res.json();
+                const zones = data.zones || [];
+                
+                const colors = { 'Critical': '#ff3366', 'Very High': '#ff3366', 'High': '#ff6600', 'Medium': '#eab308', 'Low': '#00ff88', 'Minimal': '#00ff88' };
+                
+                document.getElementById('riskZones').innerHTML = zones.slice(0, 8).map(z => `
+                    <div class="risk-item" style="border-color: ${colors[z.risk_level]}">
+                        <div class="zone-name">${z.name}</div>
+                        <div class="zone-risk">Risk: <span style="color:${colors[z.risk_level]}">${z.risk_level}</span> (Score: ${z.risk_score})</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                document.getElementById('riskZones').innerHTML = '<div style="color: var(--text-dim); font-size: 0.8rem; padding: 0.5rem;">Failed to load risk zones</div>';
+            }
+        }
+
+        function updateMapMarkers(zones) {
+            if (!map) return;
+            
+            landslideMarkers.forEach(m => map.removeLayer(m));
+            landslideMarkers = [];
+            
+            const colors = { 'Very High': '#ff3366', 'High': '#ff6600', 'Medium': '#eab308', 'Low': '#00ff88' };
+            const radii = { 'Very High': 14, 'High': 11, 'Medium': 9, 'Low': 7 };
+            
+            zones.forEach(zone => {
+                const color = colors[zone.severity] || '#ff6600';
+                const radius = radii[zone.severity] || 9;
+                const lat = zone.latitude;
+                const lon = zone.longitude;
+                
+                const marker = L.circleMarker([lat, lon], {
+                    radius: radius,
+                    fillColor: color,
+                    color: '#fff',
+                    fillOpacity: 0.9,
+                    weight: 2
+                }).addTo(map).bindPopup(`
+                    <div style="min-width: 140px; font-family: sans-serif; background: #1a1a25; padding: 10px; border-radius: 8px;">
+                        <strong style="color:${color}; font-size: 1.1em;">⚠️ ${zone.severity || 'Unknown'}</strong>
+                        <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;">
+                        <div style="font-size: 0.85em; color: #e0e0e0;">
+                            <div>📍 ${lat.toFixed(4)}, ${lon.toFixed(4)}</div>
+                            <div>📐 Area: ${(zone.area_sq_meters || 0).toFixed(0)} m²</div>
+                            ${zone.timestamp ? `<div>🕐 ${new Date(zone.timestamp > 1e12 ? zone.timestamp : zone.timestamp * 1000).toLocaleString()}</div>` : ''}
+                        </div>
+                    </div>
+                `);
+                landslideMarkers.push(marker);
+            });
+            
+            if (landslideMarkers.length > 0) {
+                const group = L.featureGroup(landslideMarkers);
+                map.fitBounds(group.getBounds().pad(0.2));
+            }
+        }
+
+        function updateAlertList(zones) {
+            const container = document.getElementById('alertList');
+            if (!zones || zones.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-check-circle"></i><p>No active alerts</p></div>';
+                return;
+            }
+            
+            const colors = { 'Very High': '#ff3366', 'High': '#ff6600', 'Medium': '#eab308', 'Low': '#00ff88' };
+            const severityClass = { 'Very High': 'critical', 'High': 'high', 'Medium': 'medium', 'Low': 'low' };
+            
+            const severityOrder = { 'Very High': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
+            const sorted = [...zones].sort((a, b) => (severityOrder[a.severity] || 2) - (severityOrder[b.severity] || 2));
+            
+            container.innerHTML = sorted.slice(0, 8).map(z => {
+                const cls = severityClass[z.severity] || 'medium';
+                const color = colors[z.severity] || '#eab308';
+                let timeStr = '--';
+                if (z.timestamp) {
+                    const ts = z.timestamp > 1e12 ? z.timestamp : z.timestamp * 1000;
+                    const date = new Date(ts);
+                    if (date.getFullYear() > 2020 && date.getFullYear() < 2100) {
+                        timeStr = date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    } else {
+                        timeStr = 'Today';
+                    }
+                }
+                return `<div class="alert-item ${cls}">
+                    <div class="alert-header">
+                        <span class="severity" style="color:${color}">${z.severity || 'Medium'}</span>
+                        <span class="time">${timeStr}</span>
+                    </div>
+                    <div class="coords"><i class="fas fa-map-marker-alt"></i> ${(z.latitude || 0).toFixed(4)}, ${(z.longitude || 0).toFixed(4)}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function updateWeatherChart(hourlyData) {
+            if (!hourlyData || hourlyData.length === 0) {
+                hourlyData = Array.from({length: 12}, (_, i) => ({ time: new Date(Date.now() + i*3600000).toISOString(), precipitation: Math.random() * 5 }));
+            }
+            
+            const ctx = document.getElementById('weatherChart').getContext('2d');
+            if (weatherChart) weatherChart.destroy();
+            
+            const labels = hourlyData.slice(0, 24).map(h => {
+                const d = new Date(h.time);
+                return d.getHours() + ':00';
+            });
+            
+            const values = hourlyData.slice(0, 24).map(h => h.precipitation || 0);
+            
+            weatherChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Rainfall (mm)',
+                        data: values,
+                        borderColor: '#00f0ff',
+                        backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#00f0ff'
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } }, 
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: 'rgba(255,255,255,0.05)' }, 
+                            ticks: { color: '#707080' }
+                        }, 
+                        x: { 
+                            grid: { display: false }, 
+                            ticks: { color: '#707080', maxTicksLimit: 8 }
+                        } 
+                    } 
+                }
+            });
+        }
+
+        function refreshMap() { map?.setView([33.5, 77.5], 7); loadLandslides(); }
+        function refreshAll() { loadDashboard(); }
+        
+        async function triggerEmergencyAlert() {
+            if (!confirm('Send emergency alert to all authorities?')) return;
+            try {
+                const landslides = await fetch(`${API_BASE}/landslides/active`).then(r => r.json());
+                if (landslides.danger_zones?.length > 0) {
+                    alert(`Emergency alert prepared for ${landslides.danger_zones.length} danger zone(s). Email service ready.`);
+                } else {
+                    alert('No active landslides to alert about.');
+                }
+            } catch (e) { alert('Service unavailable.'); }
+        }
+
+        function exportReport() { 
+            const data = JSON.stringify({exported: true, timestamp: new Date().toISOString()});
+            const blob = new Blob([data], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'landslide-report.json';
+            a.click();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeraAlert | Landslide Early Warning System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0a0a0f;
+            --bg-2: #0d0d15;
+            --surface: #12121a;
+            --surface-2: #1a1a25;
+            --text: #e0e0e0;
+            --text-dim: #707080;
+            --cyan: #00f0ff;
+            --cyan-dim: rgba(0, 240, 255, 0.15);
+            --cyan-glow: rgba(0, 240, 255, 0.4);
+            --red: #ff3366;
+            --red-dim: rgba(255, 51, 102, 0.15);
+            --green: #00ff88;
+        }
+        
+        html { scroll-behavior: smooth; }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+        
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            font-size: 15px;
+            letter-spacing: 0.01em;
+        }
+        
+        h1, h2, h3, h4, .logo, .btn, .stat-num, .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--text);
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--cyan), #0080ff);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px var(--cyan-glow);
+        }
+        
+        .logo-icon svg { width: 22px; height: 22px; }
+        
+        .logo span {
+            background: linear-gradient(135deg, var(--cyan), var(--green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .nav-links a {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .nav-links a:hover {
+            background: var(--cyan-dim);
+            color: var(--cyan);
+        }
+        
+        .nav-cta {
+            background: linear-gradient(135deg, var(--cyan), #0080ff) !important;
+            color: #000 !important;
+            font-weight: 600 !important;
+        }
+        
+        .nav-cta:hover {
+            box-shadow: 0 0 20px var(--cyan-glow);
+        }
+        
+        main { margin-top: 70px; }
+        
+        .hero {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.05) 0%, var(--bg) 100%);
+            padding: 4rem 2rem;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+        }
+        
+        .hero-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+        
+        .hero-text { text-align: left; }
+        .hero-text.center { text-align: center; }
+        .hero-text.center p { margin: 0 auto 2rem; }
+        .hero-text.center .hero-btns { justify-content: center; }
+        
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--green);
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--green);
+            margin-bottom: 1.5rem;
+        }
+        
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text);
+            line-height: 1.2;
+        }
+        
+        .hero h1 span { color: var(--cyan); }
+        
+        .hero p {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+        
+        .hero-btns {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--cyan), #0080ff);
+            color: #000;
+            box-shadow: 0 4px 20px var(--cyan-glow);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--cyan-glow);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: var(--cyan-dim);
+        }
+        
+        .globe-wrapper {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .globe {
+            width: 350px;
+            height: 350px;
+            position: relative;
+        }
+        
+        .globe-sphere {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: 
+                radial-gradient(circle at 35% 35%, rgba(0, 240, 255, 0.3) 0%, transparent 40%),
+                radial-gradient(circle at 70% 70%, rgba(255, 51, 102, 0.2) 0%, transparent 40%),
+                linear-gradient(135deg, #0d1a2d 0%, #0a0a15 50%, #050510 100%);
+            box-shadow: 
+                0 0 80px rgba(0, 240, 255, 0.2),
+                0 0 120px rgba(0, 240, 255, 0.1),
+                inset 0 0 60px rgba(0, 0, 0, 0.8),
+                inset -20px -20px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            animation: globe-glow 4s ease-in-out infinite;
+        }
+        
+        @keyframes globe-glow {
+            0%, 100% { box-shadow: 0 0 80px rgba(0, 240, 255, 0.2), 0 0 120px rgba(0, 240, 255, 0.1), inset 0 0 60px rgba(0, 0, 0, 0.8), inset -20px -20px 60px rgba(0, 0, 0, 0.5); }
+            50% { box-shadow: 0 0 100px rgba(0, 240, 255, 0.3), 0 0 150px rgba(0, 240, 255, 0.15), inset 0 0 60px rgba(0, 0, 0, 0.8), inset -20px -20px 60px rgba(0, 0, 0, 0.5); }
+        }
+        
+        .globe-grid {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: 
+                repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0, 240, 255, 0.08) 20px, rgba(0, 240, 255, 0.08) 21px),
+                repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(0, 240, 255, 0.08) 20px, rgba(0, 240, 255, 0.08) 21px);
+        }
+        
+        .globe-ring {
+            position: absolute;
+            inset: -20%;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 50%;
+            animation: ring-rotate 15s linear infinite;
+        }
+        
+        .globe-ring::before {
+            content: '';
+            position: absolute;
+            inset: 15%;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 50%;
+        }
+        
+        @keyframes ring-rotate {
+            from { transform: rotateX(60deg) rotateZ(0deg); }
+            to { transform: rotateX(60deg) rotateZ(360deg); }
+        }
+        
+        .globe-marker {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: var(--red);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px var(--red), 0 0 40px rgba(255, 51, 102, 0.5);
+            animation: marker-blink 2s ease-in-out infinite;
+            z-index: 10;
+        }
+        
+        .globe-marker::after {
+            content: '';
+            position: absolute;
+            inset: -10px;
+            border: 2px solid var(--red);
+            border-radius: 50%;
+            animation: marker-ping 2s ease-out infinite;
+        }
+        
+        @keyframes marker-blink {
+            0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.9); }
+        }
+        
+        @keyframes marker-ping {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+        
+        .stats-row {
+            background: var(--surface);
+            padding: 2rem;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+        }
+        
+        .stats-inner {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+        }
+        
+        .stat { text-align: center; }
+        
+        .stat-num {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+        
+        .stat-num.green { color: var(--green); }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-top: 0.25rem;
+        }
+        
+        .why-section {
+            padding: 4rem 2rem;
+            background: var(--surface);
+        }
+        
+        .why-inner { max-width: 1000px; margin: 0 auto; }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .section-tag {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--cyan);
+            margin-bottom: 0.5rem;
+        }
+        
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        
+        .why-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        .why-left h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+        
+        .why-left p {
+            color: var(--text-dim);
+            margin-bottom: 1.5rem;
+            line-height: 1.7;
+        }
+        
+        .impact-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .impact-stat {
+            background: var(--surface-2);
+            border: 1px solid var(--red);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .impact-stat .num {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--red);
+        }
+        
+        .impact-stat .desc {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 0.25rem;
+        }
+        
+        .why-right {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .why-card {
+            background: var(--surface-2);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            gap: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .why-card:hover {
+            border-color: rgba(0, 240, 255, 0.3);
+            transform: translateX(5px);
+        }
+        
+        .why-card-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--red-dim);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        .why-card h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text);
+        }
+        
+        .why-card p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+        
+        .features { padding: 4rem 2rem; }
+        .features-inner { max-width: 1000px; margin: 0 auto; }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+        
+        .feature {
+            background: var(--surface);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+        }
+        
+        .feature:hover {
+            border-color: rgba(0, 240, 255, 0.3);
+            transform: translateY(-3px);
+        }
+        
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--cyan-dim);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--cyan);
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .feature h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        
+        .feature p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+        
+        .map-section {
+            padding: 4rem 2rem;
+            background: var(--surface);
+        }
+        
+        .map-inner { max-width: 1000px; margin: 0 auto; }
+        
+        .map-card {
+            background: var(--bg-2);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .map-top {
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+        }
+        
+        .map-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text);
+        }
+        
+        .map-title i { color: var(--cyan); }
+        
+        .map-count { font-size: 0.85rem; color: var(--text-dim); }
+        
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8rem;
+            color: var(--green);
+            font-weight: 500;
+        }
+        
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--green);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        #preview-map { height: 400px; }
+        
+        footer {
+            background: var(--surface);
+            border-top: 1px solid rgba(0, 240, 255, 0.1);
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .footer-content { max-width: 800px; margin: 0 auto; }
+        
+        .footer-logo {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--cyan), var(--green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        footer p { color: var(--text-dim); font-size: 0.85rem; }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+        
+        .footer-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+        
+        .footer-links a:hover { color: var(--cyan); }
+        
+        @media (max-width: 900px) {
+            .why-grid { grid-template-columns: 1fr; }
+            .features-grid { grid-template-columns: 1fr; }
+            .stats-inner { flex-wrap: wrap; gap: 2rem; }
+            .hero-inner { grid-template-columns: 1fr; gap: 2rem; }
+            .hero-text { text-align: center; }
+            .hero-text p { margin: 0 auto 2rem; }
+            .hero-btns { justify-content: center; }
+            .globe-wrapper { order: -1; }
+            .globe { width: 280px; height: 280px; }
+        }
+        
+        @media (max-width: 600px) {
+            header { padding: 0.75rem 1rem; }
+            .nav-links a:not(.nav-cta) { display: none; }
+            .hero h1 { font-size: 1.75rem; }
+            .globe { width: 220px; height: 220px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 20L12 4L21 20H3Z"/>
+                    <path d="M8 16H16"/>
+                </svg>
+            </span>
+            Tera<span>Alert</span>
+        </div>
+        <div class="nav-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/route">Route Planner</a>
+            <a href="#features">Features</a>
+            <a href="/dashboard" class="nav-cta">Launch</a>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-inner">
+                <div class="hero-text">
+                    <div class="hero-badge">
+                        <span class="live-dot"></span>
+                        System Active
+                    </div>
+                    <h1>Landslide Detection &<br><span>Early Warning System</span></h1>
+                    <p>
+                        Real-time satellite monitoring across the Himalayan range with instant alerts, 
+                        weather-based risk prediction, and safe route planning for disaster preparedness.
+                    </p>
+                    <div class="hero-btns">
+                        <a href="/dashboard" class="btn btn-primary">
+                            <i class="fas fa-chart-line"></i>
+                            Open Dashboard
+                        </a>
+                        <a href="/route" class="btn btn-secondary">
+                            <i class="fas fa-route"></i>
+                            Plan Safe Route
+                        </a>
+                    </div>
+                </div>
+                <div class="globe-wrapper">
+                    <div class="globe">
+                        <div class="globe-sphere">
+                            <div class="globe-grid"></div>
+                            <div class="globe-marker" style="top: 38%; left: 48%;"></div>
+                            <div class="globe-marker" style="top: 42%; left: 52%;"></div>
+                            <div class="globe-marker" style="top: 35%; left: 55%;"></div>
+                            <div class="globe-marker" style="top: 45%; left: 50%;"></div>
+                            <div class="globe-marker" style="top: 40%; left: 46%;"></div>
+                        </div>
+                        <div class="globe-ring"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="stats-row">
+            <div class="stats-inner">
+                <div class="stat">
+                    <div class="stat-num">16</div>
+                    <div class="stat-label">Zones Monitored</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num green" id="alertCount">0</div>
+                    <div class="stat-label">Active Alerts</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">4</div>
+                    <div class="stat-label">States Covered</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">24/7</div>
+                    <div class="stat-label">Protection</div>
+                </div>
+            </div>
+        </div>
+
+        <section class="why-section">
+            <div class="why-inner">
+                <div class="section-header">
+                    <div class="section-tag">Why This Matters</div>
+                    <h2 class="section-title">Himalayan Landslide Detection Is Critical</h2>
+                </div>
+                
+                <div class="why-grid">
+                    <div class="why-left">
+                        <h3>The Challenge We Face</h3>
+                        <p>
+                            The Himalayan region faces some of the highest landslide risks globally. 
+                            Every year, thousands of lives are affected by landslides triggered by heavy monsoon rains, 
+                            earthquakes, and climate change. Early detection and warning systems can save countless lives.
+                        </p>
+                        <div class="impact-stats">
+                            <div class="impact-stat">
+                                <div class="num">28,000+</div>
+                                <div class="desc">Landslide events per year in India</div>
+                            </div>
+                            <div class="impact-stat">
+                                <div class="num">200+</div>
+                                <div class="desc">Deaths annually from landslides</div>
+                            </div>
+                            <div class="impact-stat">
+                                <div class="num">$3.5B</div>
+                                <div class="desc">Annual economic losses</div>
+                            </div>
+                            <div class="impact-stat">
+                                <div class="num">42%</div>
+                                <div class="desc">Increase in landslide frequency</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="why-right">
+                        <div class="why-card">
+                            <div class="why-card-icon">⚠️</div>
+                            <div>
+                                <h4>Lives at Risk</h4>
+                                <p>Himalayan villages and highways face constant threat. Real-time monitoring provides critical minutes for evacuation.</p>
+                            </div>
+                        </div>
+                        <div class="why-card">
+                            <div class="why-card-icon">🌧️</div>
+                            <div>
+                                <h4>Monsoon Vulnerability</h4>
+                                <p>60-90% of landslides occur during monsoon season (June-September). Continuous monitoring is essential.</p>
+                            </div>
+                        </div>
+                        <div class="why-card">
+                            <div class="why-card-icon">🏔️</div>
+                            <div>
+                                <h4>Remote Terrain</h4>
+                                <p>Difficult terrain makes manual monitoring impractical. AI-powered satellite analysis provides 24/7 coverage.</p>
+                            </div>
+                        </div>
+                        <div class="why-card">
+                            <div class="why-card-icon">🚗</div>
+                            <div>
+                                <h4>Infrastructure Protection</h4>
+                                <p>Highways like NH-5 and NH-58 are prone to blocking. Early warnings help authorities close roads in time.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features" id="features">
+            <div class="features-inner">
+                <div class="section-header">
+                    <div class="section-tag">Capabilities</div>
+                    <h2 class="section-title">System Features</h2>
+                </div>
+                
+                <div class="features-grid">
+                    <div class="feature">
+                        <div class="feature-icon"><i class="fas fa-satellite"></i></div>
+                        <h3>Satellite Monitoring</h3>
+                        <p>Continuous Sentinel-2 imagery analysis across the Himalayan range.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                        <h3>ML Detection</h3>
+                        <p>Deep learning models identify danger zones automatically.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon"><i class="fas fa-bell"></i></div>
+                        <h3>Instant Alerts</h3>
+                        <p>Email notifications to authorities within seconds.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon"><i class="fas fa-route"></i></div>
+                        <h3>Safe Routing</h3>
+                        <p>Enter any address to find routes avoiding danger zones.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon"><i class="fas fa-cloud-sun"></i></div>
+                        <h3>Weather Analysis</h3>
+                        <p>Real-time weather and soil moisture data for predictions.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon"><i class="fas fa-map-location-dot"></i></div>
+                        <h3>Click to Report</h3>
+                        <p>Report suspected landslides directly from the map.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="map-section">
+            <div class="map-inner">
+                <div class="section-header">
+                    <div class="section-tag">Live Map</div>
+                    <h2 class="section-title">Monitored Regions</h2>
+                </div>
+                
+                <div class="map-card">
+                    <div class="map-top">
+                        <div class="map-title">
+                            <i class="fas fa-map-marked-alt"></i>
+                            Interactive Map
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1.5rem;">
+                            <span class="map-count" id="mapCount">Loading...</span>
+                            <span class="live-badge">
+                                <span class="live-dot"></span>
+                                Live
+                            </span>
+                        </div>
+                    </div>
+                    <div id="preview-map"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">TeraAlert</div>
+            <p>Himalayan Landslide Detection System</p>
+            <p style="margin-top: 0.5rem;">Developed by Angel Gupta</p>
+            <div class="footer-links">
+                <a href="/">Home</a>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/route">Route Planner</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const map = L.map('preview-map', {
+            center: [31.5, 77.5],
+            zoom: 6,
+            scrollWheelZoom: true
+        });
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        
+        const zones = [
+            { name: 'Hamirpur, HP', lat: 31.52, lon: 76.52 },
+            { name: 'Kangra, HP', lat: 32.09, lon: 76.32 },
+            { name: 'Mandi, HP', lat: 31.71, lon: 76.93 },
+            { name: 'Shimla, HP', lat: 31.10, lon: 77.17 },
+            { name: 'Kullu, HP', lat: 31.96, lon: 77.11 },
+            { name: 'Dehradun, UK', lat: 30.32, lon: 78.03 },
+            { name: 'Chamoli, UK', lat: 30.73, lon: 79.60 },
+            { name: 'Srinagar, JK', lat: 34.08, lon: 74.80 },
+            { name: 'Leh, Ladakh', lat: 34.15, lon: 77.58 },
+        ];
+        
+        zones.forEach(z => {
+            L.circleMarker([z.lat, z.lon], {
+                radius: 8,
+                fillColor: '#00ff88',
+                color: '#fff',
+                fillOpacity: 0.9,
+                weight: 2
+            }).addTo(map).bindPopup(z.name);
+        });
+        
+        fetch('/api/landslides/active')
+            .then(r => r.json())
+            .then(data => {
+                const count = data.count || 0;
+                document.getElementById('alertCount').textContent = count;
+                document.getElementById('mapCount').textContent = count + ' active alerts';
+                
+                const colors = { 'Very High': '#ff3366', 'High': '#ff6600', 'Medium': '#ffaa00', 'Low': '#00ff88' };
+                (data.danger_zones || []).forEach(z => {
+                    L.circleMarker([z.latitude, z.longitude], {
+                        radius: 10,
+                        fillColor: colors[z.severity] || '#ff6600',
+                        color: '#fff',
+                        fillOpacity: 0.9,
+                        weight: 2
+                    }).addTo(map).bindPopup(`⚠️ ${z.severity}<br>${(z.area_sq_meters || 0).toFixed(0)} m²`);
+                });
+            });
+    </script>
+</body>
+</html>

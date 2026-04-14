@@ -1,0 +1,73 @@
+# Landslide Detection & Early Warning System
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: landslide-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - ALERT_FROM_EMAIL=${ALERT_FROM_EMAIL}
+      - AUTHORITY_EMAIL_1=${AUTHORITY_EMAIL_1}
+      - AUTHORITY_EMAIL_2=${AUTHORITY_EMAIL_2}
+      - AUTHORITY_EMAIL_3=${AUTHORITY_EMAIL_3}
+      - AUTHORITY_EMAIL_4=${AUTHORITY_EMAIL_4}
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+      - model-data:/app/model
+    depends_on:
+      - redis
+    networks:
+      - landslide-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: landslide-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - landslide-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: landslide-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - landslide-network
+    restart: unless-stopped
+
+networks:
+  landslide-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  model-data:

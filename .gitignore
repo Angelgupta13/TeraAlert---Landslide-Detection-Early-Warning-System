@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ML Models - tracked by git lfs
+# *.pkt
+# *.pth
+*.pt
+*.onnx
+
+# Jupyter (training notebooks kept local)
+.ipynb_checkpoints/
+*.ipynb
+*.py
+!backend/**/*.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Data (keep package.json if exists)
+*.json
+!package.json
+!backend/schemas.py
+data/
+*.csv
+
+# Cache files
+cache/
+analytics/
+
+# Simulation/training data (not needed for deployment)
+simulated_satellite_feed/
+
+# Optional to track with git lfs (uncomment if needed)
+# *.pkt
+# *.pth
+
+# Node (if used)
+node_modules/
+package-lock.json
+
+# Docker
+*.log
