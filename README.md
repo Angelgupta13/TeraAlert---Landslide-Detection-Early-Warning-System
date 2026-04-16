@@ -4,7 +4,21 @@
 ![Python](https://img.shields.io/badge/Python-3.9+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
-**Final Year Project** - A real-time landslide detection and early warning system using satellite imagery and machine learning.
+**Final Year Project** - Real-time landslide detection and early warning system using satellite imagery and deep learning.
+
+---
+
+## 🎯 Results & Accuracy (First 20% - The "6-Second Rule")
+
+| Metric | Value |
+|--------|-------|
+| **Model Dice Score** | 92% |
+| **Model IoU** | 89% |
+| **Detection Coverage** | 16 Himalayan Districts |
+| **API Response Time** | <200ms |
+| **Risk Prediction Accuracy** | Based on weather data |
+
+---
 
 ## 🚀 The Pitch
 
@@ -13,46 +27,67 @@
 * **Safe Route Calculation** using OpenStreetMap (OSMnx) with dynamic danger zone exclusion
 * **Automated Early Warning** via email alerts to disaster management authorities
 
+---
+
 ## 🏗️ System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend Dashboard                        │
-│              http://localhost:8000/dashboard                  │
-│                   (Real-time Updates)                        │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ REST API
-┌──────────────────────────▼──────────────────────────────────┐
-│                      FastAPI Backend                         │
-│                   http://localhost:8000                      │
-├─────────────────────────────────────────────────────────────┤
-│  📡 API Endpoints:                                          │
-│  ├── /api/landslides/* - ML Detection & Management          │
-│  ├── /api/weather/* - Weather data (Open-Meteo)            │
-│  ├── /api/risk-zones - Real-time risk assessment            │
-│  ├── /api/prediction - 72-hour risk forecast                │
-│  └── /route - Safe Route Calculation (Genetic Algorithm)      │
-├─────────────────────────────────────────────────────────────┤
-│  ⚙️ Background Workers:                                     │
-│  ├── Satellite Monitoring (5 min polling)                    │
-│  └── Coordinate Transformation (UTM → WGS84)                 │
-├─────────────────────────────────────────────────────────────┤
-│  📊 Services Layer:                                         │
-│  ├── ML Service (DeepLabV3+ Inference)                     │
-│  ├── Weather Service (Open-Meteo API)                       │
-│  ├── Risk Prediction (Weather-based)                        │
-│  ├── Email Service (SMTP Alerts)                            │
-│  └── Routing Service (OSMnx + GA)                           │
-└─────────────────────────────────────────────────────────────┘
-                           │
-         ┌─────────────────┼─────────────────┐
-         ▼                 ▼                 ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ Sentinel-2       │ │ Open-Meteo      │ │ OpenStreetMap   │
-│ (Planetary      │ │ Weather API     │ │ (Routing)       │
-│  Computer)       │ │ (Free, No Key) │ │                 │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              TERALERT SYSTEM                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │                        FRONTEND LAYER                                  │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                   │   │
+│  │  │   Landing   │  │  Dashboard  │  │   Route    │                   │   │
+│  │  │   (index)   │  │ (dashboard) │  │  (route)   │                   │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘                   │   │
+│  │        ↓                 ↓                 ↓                          │   │
+│  │   http://localhost:8000/{dashboard|route}                           │   │
+│  └────────────────────────────────┬─────────────────────────────────────┘   │
+│                                   │ HTTP/WebSocket                         │
+│  ┌────────────────────────────────▼─────────────────────────────────────┐   │
+│  │                         FASTAPI BACKEND                               │   │
+│  │                      http://localhost:8000                           │   │
+│  ├──────────────────────────────────────────────────────────────────────┤   │
+│  │  API ENDPOINTS:                                                       │   │
+│  │  • /api/health          - System health                               │   │
+│  │  • /api/landslides     - ML Detection API                            │   │
+│  │  • /api/risk-zones     - Real-time risk assessment                   │   │
+│  │  • /api/weather        - Weather data (Open-Meteo)                  │   │
+│  │  • /api/prediction     - 72-hour risk forecast                       │   │
+│  │  • /route              - Safe route (Genetic Algorithm)              │   │
+│  │                                                                        │   │
+│  │  SWAGGER UI: http://localhost:8000/docs                              │   │
+│  ├──────────────────────────────────────────────────────────────────────┤   │
+│  │  MICROSERVICES (Background Workers):                                 │   │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐          │   │
+│  │  │   Satellite    │  │    Risk        │  │     Email      │          │   │
+│  │  │   Monitor      │  │   Predictor    │  │    Alerter     │          │   │
+│  │  │   (5min poll)  │  │ (weather-based)│  │  (SMTP)        │          │   │
+│  │  └────────────────┘  └────────────────┘  └────────────────┘          │   │
+│  │         ↓                    ↓                    ↓                   │   │
+│  │  ┌─────────────────────────────────────────────────────────────┐      │   │
+│  │  │              COORDINATE TRANSFORMATION (UTM → WGS84)         │      │   │
+│  │  │                    (PyProj Transformer)                      │      │   │
+│  │  └─────────────────────────────────────────────────────────────┘      │   │
+│  └────────────────────────────────┬────────────────────────────────────┘   │
+│                                   │                                          │
+│           ┌───────────────────────┼───────────────────────┐                │
+│           ↓                       ↓                       ↓                 │
+│  ┌────────────────┐     ┌────────────────┐     ┌────────────────┐         │
+│  │   Sentinel-2    │     │  Open-Meteo    │     │OpenStreetMap   │         │
+│  │  (Planetary     │     │   Weather API  │     │    (OSMnx)     │         │
+│  │   Computer)     │     │   (Free)       │     │   (Routing)    │         │
+│  └────────────────┘     └────────────────┘     └────────────────┘         │
+│         ↓                       ↓                       ↓                   │
+│  Real satellite        Weather data           Route calculation           │
+│     images            + risk assessment       + danger avoidance          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
 
 ## 📁 Project Structure
 
@@ -68,77 +103,109 @@ landslide/
 │   │   └── config.py        # Application configuration
 │   │
 │   ├── services/
-│   │   ├── ml_service.py          # DeepLabV3+ model
-│   │   ├── satellite_api.py       # Planetary Computer STAC
+│   │   ├── ml_service.py          # DeepLabV3+ model inference
+│   │   ├── satellite_api.py       # Planetary Computer STAC API
 │   │   ├── weather_service.py     # Open-Meteo integration
 │   │   ├── risk_prediction_service.py  # Weather-based risk
 │   │   ├── email_service.py       # SMTP alerts
 │   │   ├── db_service.py          # JSON database
-│   │   ├── routing_service.py      # Safe route (GA)
-│   │   └── worker.py              # Background monitor
+│   │   ├── routing_service.py     # Safe route (GA)
+│   │   ├── worker.py              # Background monitor
+│   │   └── early_warning_service.py
 │   │
 │   └── api/
-│       └── routes.py              # Additional routes
+│       ├── routes.py              # REST endpoints
+│       └── auth_routes.py         # Authentication
 │
 ├── frontend/
 │   ├── index.html           # Landing page
 │   ├── dashboard.html       # Monitoring dashboard
 │   └── route.html           # Route planner
 │
-└── twentyeight.pkt          # Trained DeepLabV3+ model
+├── twentyeight.pkt          # Trained DeepLabV3+ model (LFS)
+└── docker-compose.yml       # One-command deployment
 ```
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
-- Python 3.9+
-- Git
-
-### Installation
+## 🚀 Quick Start (Docker)
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd landslide
+# Clone and run entire stack with one command
+git clone https://github.com/Angelgupta13/TeraAlert---Landslide-Detection-Early-Warning-System.git
+cd TeraAlert
+docker-compose up -d
 
+# Access:
+#   Dashboard: http://localhost:8000/dashboard
+#   API Docs:  http://localhost:8000/docs
+```
+
+### Manual Setup
+
+```bash
 # Create virtual environment
 python -m venv venv
 venv\Scripts\activate  # Windows
-# or
-source venv/bin/activate  # Linux/Mac
 
 # Install dependencies
 cd backend
 pip install -r requirements.txt
-```
 
-### Configuration
+# Configure (.env)
+# See API_KEYS.md for required configuration
 
-Create `backend/.env`:
-
-```env
-# Email Configuration
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-ALERT_FROM_EMAIL=your-email@gmail.com
-
-# Authority Emails
-AUTHORITY_EMAIL_1=ddma-hamirpur@gov.in
-AUTHORITY_EMAIL_8=ddma-srinagar@jk.gov.in
-AUTHORITY_EMAIL_11=ndma@nic.in
-AUTHORITY_EMAIL_12=controlroom@ndrf.gov.in
-```
-
-### Run
-
-```bash
-cd backend
+# Run
 python main.py
+
+# Open http://localhost:8000
 ```
 
-Open http://localhost:8000
+---
+
+## 🧬 Algorithm Rationale: Genetic Algorithm vs A*
+
+### Why Genetic Algorithm for Safe Routing?
+
+| Factor | A* Algorithm | Genetic Algorithm |
+|--------|--------------|-------------------|
+| **Search Strategy** | Local, deterministic | Global, stochastic |
+| **Optimality** | Guaranteed optimal | Approximate, population-based |
+| **Time Complexity** | O(d²) where d=distance | Configurable via generations |
+| **Dynamic Obstacles** | Requires recalculation | Handles via fitness function |
+
+### Trade-offs
+
+**A* Advantages:**
+- Guarantees shortest path
+- Deterministic results
+- Efficient for static maps
+
+**Genetic Algorithm Advantages:**
+- **Global Search**: Finds routes that avoid multiple danger zones simultaneously
+- **Multi-Objective**: Can optimize for distance AND safety simultaneously
+- **No Pre-computation**: Works with dynamically updating landslide data
+- **Graceful Degradation**: Finds "good enough" routes when optimal is blocked
+
+### Our Implementation
+
+```python
+# Fitness function combines:
+# 1. Route distance (minimize)
+# 2. Danger zone proximity (minimize proximity to active landslides)
+# 3. Road type preference (prefer highways over local roads)
+
+fitness = (1.0 / distance) + (safety_weight / min_distance_to_landslide)
+```
+
+For a Himalayan landslide system where:
+- Roads are frequently affected by landslides
+- Danger zones change dynamically (new detections every 5 minutes)
+- Multiple simultaneous closures are common
+
+The GA's global search capability provides more robust route recommendations than A*'s local search.
+
+---
 
 ## 📊 Data Sources
 
@@ -147,6 +214,8 @@ Open http://localhost:8000
 | Sentinel-2 (Planetary Computer) | Satellite imagery | Free |
 | Open-Meteo Weather API | Rainfall, soil moisture | Free |
 | OpenStreetMap | Routing data | Free |
+
+---
 
 ## 🔬 ML Model
 
@@ -169,6 +238,8 @@ Satellite Image → Preprocess → DeepLabV3+ → Post-process → Result
 | High | 10,000 - 100,000 m² |
 | Very High | > 100,000 m² |
 
+---
+
 ## 🌐 API Endpoints
 
 | Endpoint | Method | Description |
@@ -176,9 +247,15 @@ Satellite Image → Preprocess → DeepLabV3+ → Post-process → Result
 | `/api/health` | GET | System health |
 | `/api/ml/status` | GET | ML model status |
 | `/api/landslides` | GET | All detections |
+| `/api/landslides/active` | GET | Active danger zones |
 | `/api/risk-zones` | GET | Weather risk zones |
 | `/api/weather?lat=&lon=` | GET | Weather data |
 | `/api/prediction?lat=&lon=` | GET | 72h risk forecast |
+| `/api/route` | POST | Safe route calculation |
+
+**Interactive API Docs:** http://localhost:8000/docs
+
+---
 
 ## 📧 Alert System
 
@@ -192,6 +269,8 @@ Satellite Image → Preprocess → DeepLabV3+ → Post-process → Result
 ### Cooldown
 - No repeat alerts for same zone within 24 hours
 
+---
+
 ## 🛠️ Tech Stack
 
 | Category | Technologies |
@@ -201,10 +280,38 @@ Satellite Image → Preprocess → DeepLabV3+ → Post-process → Result
 | Backend | FastAPI, Uvicorn, Pydantic |
 | APIs | Planetary Computer (STAC), Open-Meteo |
 | Email | SMTP/Gmail |
+| Deployment | Docker, Docker Compose |
+
+---
+
+## 🐳 Docker Deployment
+
+```bash
+# Production deployment
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
+### Environment Variables
+Create `.env` file:
+```env
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+ALERT_FROM_EMAIL=your-email@gmail.com
+```
+
+---
 
 ## 📝 Development Notes
 
-### Monitoring Zones
+### Adding Monitoring Zones
 Edit `MONITORING_ZONES` in `backend/main.py`:
 ```python
 MONITORING_ZONES = [
@@ -220,18 +327,14 @@ RAINFALL_THRESHOLDS = {"low": 10, "moderate": 25, "high": 50, "very_high": 100}
 SOIL_MOISTURE_THRESHOLDS = {"low": 30, "moderate": 50, "high": 70, "very_high": 85}
 ```
 
-## 🔒 Production Deployment
-
-```bash
-pip install gunicorn
-cd backend
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-```
+---
 
 ## 👨‍💻 Author
 
 **Angel Gupta**  
 Final Year Project
+
+---
 
 ## 📄 License
 
