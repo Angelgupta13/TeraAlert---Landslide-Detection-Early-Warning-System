@@ -172,6 +172,18 @@ class LandslideDetector:
 
         # Calculate area
         num_pixels = np.sum(pred_mask > 0.5)
+        
+        # Calculate confidence (percentage of detected pixels)
+        # If detected pixels < 0.1% of image, treat as noise
+        total_pixels = pred_mask.size
+        confidence = num_pixels / total_pixels if total_pixels > 0 else 0
+        
+        # Only count as landslide if confidence > 0.3% of pixels
+        # This filters out false positives from model artifacts
+        if num_pixels < (total_pixels * 0.003):
+            num_pixels = 0
+            confidence = 0
+        
         area_sq_meters = num_pixels * (settings.SPATIAL_RESOLUTION**2)
 
         # Determine severity

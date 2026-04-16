@@ -3,10 +3,17 @@ import os
 import time
 import threading
 from datetime import datetime
+
+# Import from core.zones instead of hardcoding
+from core.zones import MONITORING_ZONES
 from services.ml_service import model_service
 from services.db_service import db_service
 from services.email_service import email_service
 from services.risk_prediction_service import risk_prediction_service
+
+# Minimum confidence threshold to filter false positives
+# Real landslides are typically <5% of a satellite tile
+MIN_CONFIDENCE_THRESHOLD = 0.03  # 3% of tile must be landslide
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FEED_DIR = os.path.join(BASE_DIR, "simulated_satellite_feed")
@@ -68,24 +75,7 @@ class BackgroundMonitor:
 
     def _scan_all_zones(self):
         """Scan all monitoring zones for landslides."""
-        zones = [
-            {"name": "Hamirpur", "lat": 31.52, "lon": 76.52},
-            {"name": "Kangra", "lat": 32.09, "lon": 76.32},
-            {"name": "Mandi", "lat": 31.71, "lon": 76.93},
-            {"name": "Shimla", "lat": 31.10, "lon": 77.17},
-            {"name": "Kullu", "lat": 31.96, "lon": 77.11},
-            {"name": "Chamba", "lat": 32.55, "lon": 76.12},
-            {"name": "Dehradun", "lat": 30.32, "lon": 78.03},
-            {"name": "Tehri", "lat": 30.38, "lon": 78.48},
-            {"name": "Chamoli", "lat": 30.73, "lon": 79.60},
-            {"name": "Rudraprayag", "lat": 30.28, "lon": 78.97},
-            {"name": "Nainital", "lat": 29.38, "lon": 79.45},
-            {"name": "Srinagar", "lat": 34.08, "lon": 74.80},
-            {"name": "Gulmarg", "lat": 34.15, "lon": 74.38},
-            {"name": "Pahalgam", "lat": 34.01, "lon": 75.31},
-            {"name": "Leh", "lat": 34.15, "lon": 77.58},
-            {"name": "Kargil", "lat": 34.55, "lon": 76.13},
-        ]
+        zones = MONITORING_ZONES
 
         print("")
         print("=" * 50)
@@ -138,6 +128,13 @@ class BackgroundMonitor:
             print("   [ALERT] DETECTED: " + result["severity"])
             area = float(result.get("area_sq_meters", 0) or 0)
             print("      Area: " + str(round(area, 2)) + " m2")
+            print("      Confidence: " + str(round(result.get("confidence", 0) * 100, 2)) + "%")
+
+            # Filter out low-confidence detections
+            # Only store if confidence > threshold (3% of tile)
+            if result.get("confidence", 0) < MIN_CONFIDENCE_THRESHOLD:
+                print("      [FILTERED] Low confidence detection - not storing")
+                return None
 
             # Store landslide
             landslide_data = {
