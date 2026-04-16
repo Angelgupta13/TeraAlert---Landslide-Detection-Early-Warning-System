@@ -178,9 +178,10 @@ class LandslideDetector:
         total_pixels = pred_mask.size
         confidence = num_pixels / total_pixels if total_pixels > 0 else 0
         
-        # Only count as landslide if confidence > 0.3% of pixels
-        # This filters out false positives from model artifacts
-        if num_pixels < (total_pixels * 0.003):
+        # Only count as landslide if confidence > 30% of pixels
+        # Model detects terrain features (bare soil, rock) as landslide
+        # This high threshold ensures only significant detections are stored
+        if num_pixels < (total_pixels * 0.30):
             num_pixels = 0
             confidence = 0
         
