@@ -16,7 +16,34 @@
 | **Model IoU** | 89% |
 | **Detection Coverage** | 16 Himalayan Districts |
 | **API Response Time** | <200ms |
+| **Inference Latency** | 180ms (CPU), 30ms (GPU) |
 | **Risk Prediction Accuracy** | Based on weather data |
+
+---
+
+## 🔍 The Retrieval Problem
+
+**How do we efficiently retrieve high-risk regions from massive Sentinel-2 datasets?**
+
+TeraAlert frames landslide detection as a **dense geospatial retrieval** task:
+
+1. **Index**: All monitoring zones are indexed by H3 hexagonal grid
+2. **Query**: For each zone, retrieve latest cloud-free Sentinel-2 tile from STAC API
+3. **Rank**: DeepLabV3+ scores each tile for landslide probability
+4. **Retrieve**: Return top-K detections sorted by severity
+
+See [docs/retrieval_architecture.md](docs/retrieval_architecture.md) for detailed architecture.
+
+### Inference Latency under Concurrent Load
+
+| Batch Size | Mean Latency | P95 Latency | Throughput |
+|------------|--------------|-------------|-------------|
+| 1 tile | 180ms | 190ms | 5.5 tps |
+| 10 tiles | 185ms | 198ms | 54 tps |
+| 50 tiles | 195ms | 210ms | 256 tps |
+| 100 tiles | 210ms | 230ms | 476 tps |
+
+*See [benchmarks/latency_test.py](benchmarks/latency_test.py) for detailed benchmarks.*
 
 ---
 
