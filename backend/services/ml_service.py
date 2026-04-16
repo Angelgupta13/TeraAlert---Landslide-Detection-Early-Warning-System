@@ -9,14 +9,20 @@ from datetime import datetime
 
 from core.config import settings
 
+# GPU is faster but we fall back to CPU gracefully
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Only GeoTIFF has the coordinate metadata needed for accurate detection
 SUPPORTED_FORMATS = {".tif", ".tiff", ".gtiff"}
 
 
 class LandslideDetector:
     """
     Landslide detection using DeepLabV3+ model trained on satellite imagery.
+    
+    Why DeepLabV3+: ASPP module handles multi-scale landslide features better 
+    than alternatives. ResNet50 encoder balances accuracy vs inference speed 
+    for 10m resolution Sentinel-2 imagery.
     """
 
     def __init__(self):
@@ -86,7 +92,12 @@ class LandslideDetector:
         return pred_mask.numpy()
 
     def predict_from_bytes(self, file_bytes, filename):
-        """Process uploaded GeoTIFF with DeepLabV3+ model."""
+        """Process uploaded GeoTIFF with DeepLabV3+ model.
+        
+        Why GeoTIFF: Standard image formats (JPG, PNG) lose geographic metadata.
+        GeoTIFF contains transform matrix and CRS needed to convert detection
+        pixel coordinates back to real-world lat/lon for map display.
+        """
         file_ext = os.path.splitext(filename.lower())[1]
 
         if file_ext not in SUPPORTED_FORMATS:
@@ -142,7 +153,12 @@ class LandslideDetector:
         return self._analyze_image(image, transform, crs, bounds)
 
     def _analyze_image(self, image, transform, crs, bounds):
-        """Internal method to analyze image with model."""
+        """Internal method to analyze image with model.
+        
+        Why transform coordinates: Sentinel-2 data comes in UTM (EPSG:32643).
+        API consumers expect WGS84 (lat/lon). We use pyproj Transformer for
+        accurate conversion - simple offset would be off by ~1km at these latitudes.
+        """
         # Preprocess
         input_tensor = self.preprocess_image(image)
 

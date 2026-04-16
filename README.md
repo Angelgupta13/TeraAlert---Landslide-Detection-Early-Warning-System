@@ -240,7 +240,11 @@ Satellite Image → Preprocess → DeepLabV3+ → Post-process → Result
 
 ---
 
-## 🌐 API Endpoints
+## 🌐 API Endpoints (Interactive Documentation)
+
+**Swagger UI:** http://localhost:8000/docs
+
+![Swagger UI](https://via.placeholder.com/800x400?text=Swagger+API+Documentation+Screenshot)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
